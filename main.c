@@ -40,14 +40,18 @@ int init_processes(char* GlobalArgv)
   char* sample_argv = strtok(GlobalArgv, "|");
 
   while(sample_argv!= NULL) {
-    printf("it is me: '%s'\n", sample_argv);
-    char** argv_array = get_argv_per_process(sample_argv, strlen(sample_argv));
-
-    // for (int i = 0; i < CountWords(sample_argv, strlen(sample_argv)); i++)
-    //   printf("argv_array[%d] = '%s'\n", i, argv_array[i]);
+    //printf("it is me: '%s'\n", sample_argv);
+    pid_t pid = fork();
+    if (pid != 0)
+    {
+      char** argv_array = get_argv_per_process(sample_argv, strlen(sample_argv));
+      execvp(argv_array[0], argv_array);  
+      //if execvp returned it means that error occured and we need to clean after execvp 
+      perror("execvp failed");
+      free(argv_array); argv_array = NULL;
+      return 0;
+    } 
     
-    free(argv_array); argv_array = NULL;
-
     sample_argv = strtok(NULL, "|"); 
   }
 
@@ -57,8 +61,10 @@ int init_processes(char* GlobalArgv)
 char** get_argv_per_process(char* sample_argv, size_t length)
 {
   //printf("sample_argv = %s\nlength = %zu\n", sample_argv, length);
-  int words = CountWords(sample_argv, length);
-  char** argv_array = (char**)calloc(CountWords(sample_argv, length), sizeof(char*));
+  int argc = CountWords(sample_argv, length);
+  char** argv_array = (char**)calloc(argc+1, sizeof(char*));
+  argv_array[argc] = NULL;
+
   size_t argv_index = 0;
   
   bool is_word_new = false;
@@ -88,10 +94,10 @@ char** get_argv_per_process(char* sample_argv, size_t length)
 
   }
 
-  for (int i = 0; i < words; i++)
-  {
-    printf("argv_array[%d] = '%s'\n", i, argv_array[i]);
-  }
+  // for (int i = 0; i < argc; i++)
+  // {
+  //   printf("argv_array[%d] = '%s'\n", i, argv_array[i]);
+  // }
   return argv_array;
 }
 
