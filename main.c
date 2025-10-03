@@ -8,7 +8,7 @@ int get_bash_argv(void);
 
 char GlobalArgv[4096];
  
-int main(/*int argc, char* argv[]*/)
+int main(void)
 {
   int run = 1; 
   while(run)
