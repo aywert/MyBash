@@ -6,24 +6,21 @@
 int init_processes(size_t Num);
 char** get_argv_per_process(char* sample_argv, size_t length);
 int get_bash_argv(void);
+void check_redirections(char** argv_array, int* input_fd, int* output_fd);
 
 char GlobalArgv[4096];
-char* Operations[255];
+char* Operations[256];
  
 int main(void)
 {
   int run = 1; 
   while(run)
   {
-    //printf("bash: ");
     system("echo -n $USER@~: ");
-    fflush(stdout);
 
     size_t Num = get_bash_argv();
 
     init_processes(Num);
-
-    //run = 0;
   }
 
   return 0;
@@ -35,6 +32,8 @@ int get_bash_argv(void)
   while((ch = getchar()) != '\n') {
     GlobalArgv[i] = ch; i++;
   }
+
+  GlobalArgv[i] = '\0'; // replacing sell after \n with '\0'
 
   size_t index = 0;
   char* sample_argv = strtok(GlobalArgv, "|");
@@ -50,7 +49,8 @@ int get_bash_argv(void)
 int init_processes(size_t Num)
 {
   int input_fd = STDIN_FILENO; // first process reading from stdin
-  
+  int output_fd = STDOUT_FILENO;
+
   for(size_t index = 0; index < Num; index++){
 
     int fds[2];
@@ -59,11 +59,16 @@ int init_processes(size_t Num)
     pid_t pid = fork();
     if (pid == 0)
     {
+      output_fd = fds[1];
+      
       if (index < Num - 1)
-        dup2(fds[1], 1); //writing in output means writing in write end of the pipe
+        dup2(output_fd, STDOUT_FILENO); //writing in stdout means writing in write end of the pipe
 
-      dup2(input_fd, 0); //reading from input_fd(at the begging it equals to stdin, then to reading end of pipe)
+      dup2(input_fd, STDIN_FILENO); //reading from input_fd(at the begging it equals to stdin, then to reading end of pipe)
+      
       char** argv_array = get_argv_per_process(Operations[index], strlen(Operations[index]));
+      check_redirections(argv_array, &input_fd, &output_fd);
+
       execvp(argv_array[0], argv_array);  
       //if execvp returned it means that error occured and we need to clean after execvp 
       perror("execvp failed");
@@ -121,31 +126,32 @@ char** get_argv_per_process(char* sample_argv, size_t length)
 
   }
 
-  // for (int i = 0; i < argc; i++)
-  // {
-  //   printf("argv_array[%d] = '%s'\n", i, argv_array[i]);
-  // }
   return argv_array;
 }
 
-/*int fds[2];
-
-  if (pipe(fds) != 0)
+void check_redirections(char** argv_array, int* input_fd, int* output_fd)
+{
+  size_t index = 0;
+  while (argv_array[index] != NULL)
   {
-    fprintf(stderr, "Mybash: %s\n", strerror(errno));
-    exit(-1);
+    if (strncmp(argv_array[index], "<", 1) == 0)
+    {
+      *input_fd = MyOpen(argv_array[index+1], O_RDONLY);
+      dup2(*input_fd, STDIN_FILENO);
+      argv_array[index] = NULL; argv_array[index+1] = NULL;
+      index += 2;
+    }
+
+    else if (strncmp(argv_array[index], ">", 1) == 0)
+    {
+      close(*output_fd);
+      *output_fd = MyOpen(argv_array[index+1], O_TRUNC|O_WRONLY|O_CREAT);
+      dup2(*output_fd, STDOUT_FILENO);
+      argv_array[index] = NULL; argv_array[index+1] = NULL;
+      index += 2;
+    }  
+    else { index++; }
   }
 
-  pid_t pid = fork();
-  if (pid == -1)
-  {
-    fprintf(stderr, "fork: %s\n", strerror(errno));
-    exit(-1);
-  }
-
-  if (pid == 0)
-  {
-    close(fds[1]); 
-    close(fds[0]);
-    exit(1);
-  }*/
+  return;
+}

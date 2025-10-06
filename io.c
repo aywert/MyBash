@@ -1,6 +1,6 @@
 #include "io.h"
 
-ssize_t Read(int fd, char buf[], ssize_t size)
+ssize_t MyRead(int fd, char buf[], ssize_t size)
 {
   int n = read(fd, buf, size);
   if(n < 0)
@@ -12,7 +12,7 @@ ssize_t Read(int fd, char buf[], ssize_t size)
   return n;
 }
 
-ssize_t Write(int fd, char buf[], ssize_t size)
+ssize_t MyWrite(int fd, char buf[], ssize_t size)
 {
   int n = write(fd, buf, size);
 
@@ -25,14 +25,15 @@ ssize_t Write(int fd, char buf[], ssize_t size)
   return n;
 }
 
-int Open(char * filename)
+int MyOpen(char * filename, int flags)
 {
-  int fd = open(filename, O_RDONLY);
-    if (fd < 0)
-    {
-      fprintf(stderr, "MyCat: %s: %s\n", filename, strerror(errno));
-      exit(-1);
-    }
+  int fd = open(filename, flags, 0666);
+
+  if (fd < 0)
+  {
+    fprintf(stderr, "Bash: syntax error near unexpected token %s:", filename);
+    exit(-1);
+  }
 
   return fd;
 }
@@ -45,12 +46,12 @@ void CopyFile(int fd_read, int fd_write)
 
   do
   {
-    n = Read(fd_read, buf, 4096);
+    n = MyRead(fd_read, buf, 4096);
     written = 0;
     
     while(n != written)
     {
-      ssize_t w = Write(fd_write, buf + written, n - written); //Write replace by write with checking
+      ssize_t w = MyWrite(fd_write, buf + written, n - written); //Write replace by write with checking
       written += w;
     }
   } while(n != 0);
