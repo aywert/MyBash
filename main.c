@@ -17,9 +17,7 @@ int main(void)
   while(run)
   {
     system("echo -n $USER@~: ");
-
     size_t Num = get_bash_argv();
-
     init_processes(Num);
   }
 
@@ -28,7 +26,7 @@ int main(void)
 
 int get_bash_argv(void)
 {
-  char ch; int i = 0;
+  char ch; size_t i = 0;
   while((ch = getchar()) != '\n') {
     GlobalArgv[i] = ch; i++;
   }
@@ -37,6 +35,9 @@ int get_bash_argv(void)
 
   size_t index = 0;
   char* sample_argv = strtok(GlobalArgv, "|");
+  
+  if (strncmp(sample_argv, "exit", 4) == 0)
+    exit(0);
   
   while(sample_argv!= NULL) {
     Operations[index++] = sample_argv;
@@ -51,8 +52,7 @@ int init_processes(size_t Num)
   int input_fd = STDIN_FILENO; // first process reading from stdin
   int output_fd = STDOUT_FILENO;
 
-  for(size_t index = 0; index < Num; index++){
-
+  for(size_t index = 0; index < Num; index++) {
     int fds[2];
     pipe(fds); // fds[0] - reading end | fds[1] = writing end 
 
@@ -63,7 +63,6 @@ int init_processes(size_t Num)
       
       if (index < Num - 1)
         dup2(output_fd, STDOUT_FILENO); //writing in stdout means writing in write end of the pipe
-
       dup2(input_fd, STDIN_FILENO); //reading from input_fd(at the begging it equals to stdin, then to reading end of pipe)
       
       char** argv_array = get_argv_per_process(Operations[index], strlen(Operations[index]));
@@ -72,12 +71,10 @@ int init_processes(size_t Num)
       execvp(argv_array[0], argv_array);  
       //if execvp returned it means that error occured and we need to clean after execvp 
       perror("execvp failed");
-      //close(new_fd);
       free(argv_array); argv_array = NULL;
       exit(0);
     } 
 
-    //int new_fd = dup2(fds[0], 0); //reading from stdin means reading from reading end of the pipe
     close(fds[1]); //closing writing end of pipe
     input_fd = fds[0]; // reading end of previous pipe;
   }
@@ -104,7 +101,6 @@ char** get_argv_per_process(char* sample_argv, size_t length)
   char* word_begin = NULL;
 
   for (size_t i = 0; i < length; i++) {
-
     if (sample_argv[i] == ' ' || sample_argv[i] == '\n') {
       sample_argv[i] = '\0';
       is_word_new = false;
@@ -123,7 +119,6 @@ char** get_argv_per_process(char* sample_argv, size_t length)
     }  
 
     is_word_old = is_word_new;
-
   }
 
   return argv_array;
